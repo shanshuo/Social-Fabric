@@ -8,7 +8,6 @@ from common import voc_ap, viou
 
 def eval_detection_scores(gt_relations, pred_relations, viou_threshold, args):
     pred_relations = sorted(pred_relations, key=lambda x: x['score'], reverse=True)
-    pred_idx_lst = list(range(len(pred_relations)))
     hit_scores = np.ones((len(pred_relations))) * -np.inf
     gt_detected = np.zeros((len(gt_relations),), dtype=bool)
     for pred_idx, pred_relation in enumerate(pred_relations):
@@ -42,14 +41,13 @@ def eval_detection_scores(gt_relations, pred_relations, viou_threshold, args):
             pred_relation['hit_gt_id'] = k_max
 
     hit_scores = hit_scores[hit_scores != -1]
-    pred_idx_lst = [x for x in pred_idx_lst if x != -1]
     tp = np.isfinite(hit_scores)
     fp = ~tp
     cum_tp = np.cumsum(tp).astype(np.float32)
     cum_fp = np.cumsum(fp).astype(np.float32)
     rec = cum_tp / np.maximum(len(gt_relations), np.finfo(np.float32).eps)
     prec = cum_tp / np.maximum(cum_tp + cum_fp, np.finfo(np.float32).eps)
-    return prec, rec, [pred_relations[i] for i in pred_idx_lst], hit_scores
+    return prec, rec, hit_scores
 
 
 def eval_tagging_scores(gt_relations, pred_relations):
@@ -84,9 +82,9 @@ def evaluate(gt_relations, prediction_root, viou_threshold, vid):
             predict_relations = predict_relations[vid]
     except ValueError:
         print('load {} failed'.format(predict_res_path))
-    det_prec, det_rec, filtered_predictions, det_scores = eval_detection_scores(
+    det_prec, det_rec, det_scores = eval_detection_scores(
         gt_relations, predict_relations, viou_threshold, args)
-    tag_prec, _, _ = eval_tagging_scores(gt_relations, filtered_predictions)
+    tag_prec, _, _ = eval_tagging_scores(gt_relations, predict_relations)
     return vid, det_prec, det_rec, det_scores, tag_prec
 
 
